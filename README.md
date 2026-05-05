@@ -68,7 +68,7 @@ The final conclusion is nuanced: CIELAB/ITA features are meaningful when measure
 | `src/lighting_bias_analysis.py` | Quantifies how raw-image brightness differs from segmented skin-region brightness. | `*_lighting_bias_summary.csv` |
 | `src/mskcc_validation.py` | Uses MSKCC CSVs to validate colorimeter ITA vs expert labels and image ITA vs colorimeter ITA. | `results/mskcc/` |
 
-## Data Leakage Defense
+## Note
 
 The pipeline avoids data leakage by separating deterministic feature extraction from learned model fitting.
 

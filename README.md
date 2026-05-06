@@ -1,12 +1,12 @@
 # Segmentation-Aware Colorimetry for Skin Appearance Pseudo-Labeling
 
-This repository implements a segmentation-aware colorimetry pipeline for studying whether skin appearance pseudo-labels can be learned from image-derived CIELAB/ITA features under limited ground truth. The project began as a downstream extension of my computer vision segmentation project and evolved into an ML4DD-style investigation of pseudo-label reliability, few-shot learnability, lighting bias, and external colorimetry validation.
+This repository implements a segmentation-aware colorimetry pipeline for studying whether skin appearance pseudo-labels can be learned from image-derived CIELAB/ITA features under limited ground truth. The project began as a downstream extension of my computer vision segmentation project and evolved into an investigation of pseudo-label reliability, few-shot learnability, lighting bias, and external colorimetry validation.
 
 ## Core Research Question
 
 Can raw or segmented image-derived color features produce meaningful skin appearance clusters, and are those pseudo-labels learnable under few-shot constraints?
 
-The final conclusion is nuanced: CIELAB/ITA features are meaningful when measured under controlled conditions, but extracting them from unconstrained images introduces lighting and context noise. The pipeline can learn structure, but on CelebA that structure often reflects global brightness/exposure rather than true skin tone.
+The final conclusion is nuanced. CIELAB/ITA features are meaningful when measured under controlled conditions, but extracting them from unconstrained images introduces lighting and context noise. The pipeline can learn structure, but on CelebA that structure often reflects global brightness/exposure rather than true skin tone.
 
 ## High-Level Project Story
 

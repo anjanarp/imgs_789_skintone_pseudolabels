@@ -1,32 +1,45 @@
-# Segmentation-Aware Colorimetry for Skin Appearance Pseudo-Labeling
+# Segmentation-Aware Colorimetry for Skin Appearance Pseudo-Labeling Under Data Scarcity
 
-This repository implements a segmentation-aware colorimetry pipeline for studying whether skin appearance pseudo-labels can be learned from image-derived CIELAB/ITA features under limited ground truth. The project began as a downstream extension of my computer vision segmentation project and evolved into an investigation of pseudo-label reliability, few-shot learnability, lighting bias, and external colorimetry validation.
+This repository implements a segmentation-aware colorimetry pipeline for studying whether image-derived skin appearance pseudo-labels can be learned by a CNN under progressively reduced training data availability. The project began as a downstream extension of my computer vision segmentation project and evolved into an investigation of pseudo-label stability, data scarcity, lighting bias, and external colorimetry validation.
 
-## Core Research Question
+The core idea is to generate pseudo-labels from image-derived CIELAB/ITA skin appearance features, then quantify how CNN classification performance changes as increasing amounts of training data are removed from every pseudo-label cluster.
 
-Can raw or segmented image-derived color features produce meaningful skin appearance clusters, and are those pseudo-labels learnable under few-shot constraints?
+---
 
-The final conclusion is nuanced. CIELAB/ITA features are meaningful when measured under controlled conditions, but extracting them from unconstrained images introduces lighting and context noise. The pipeline can learn structure, but on CelebA that structure often reflects global brightness/exposure rather than true skin tone.
+# Core Research Question
 
-## High-Level Project Story
+Can raw or segmentation-aware image-derived color features produce meaningful skin appearance pseudo-labels, and how robust are those pseudo-labels under controlled training data scarcity?
+
+More specifically:
+
+- Does segmentation improve pseudo-label quality compared to raw-image features?
+- Does balancing ITA distributions improve learnability?
+- How stable are pseudo-labels as training data is progressively reduced?
+- Are image-derived ITA measurements aligned with externally validated skin tone measurements?
+
+---
+
+# High-Level Project Story
 
 1. I started from my CV project, which produced conservative engineered skin masks for CelebA faces.
 2. I extracted CIELAB/ITA features from both raw images and segmented skin-only regions.
 3. I fit K-means on the training split only and assigned validation/test samples using fixed train centroids.
-4. I evaluated cluster quality with unsupervised metrics.
-5. I evaluated pseudo-label learnability with prototype-based few-shot classification.
-6. I visually inspected clusters and found that raw clusters were driven by lighting/context.
-7. I added balanced ITA pseudo-labels to counter cluster imbalance.
-8. I added lighting bias analysis to quantify the difference between raw-image brightness and skin-region brightness.
-9. I used the MSKCC Skin Tone Labeling Dataset as external validation to test whether ITA itself is meaningful under controlled measurements.
+4. I created balanced ITA pseudo-labels to counter cluster imbalance collapse.
+5. I trained CNN classifiers to predict pseudo-labels from face images.
+6. I simulated data scarcity by randomly removing 5% to 50% of samples from every pseudo-label cluster.
+7. I evaluated CNN performance on a fixed held-out test set using accuracy, balanced accuracy, and macro F1.
+8. I visually inspected clusters and analyzed lighting bias between raw-image brightness and segmented skin-region brightness.
+9. I used the MSKCC Skin Tone Labeling Dataset as an external validation benchmark to test whether ITA itself is meaningful under controlled measurements.
 
-## Repository Structure
+---
+
+# Repository Structure
 
 ```text
 .
 ├── config.py
 ├── data/
-│   └── mskcc/                         # Small MSKCC CSV files only
+│   └── mskcc/
 ├── results/
 │   ├── metadata.csv
 │   ├── color_features.csv
@@ -37,6 +50,7 @@ The final conclusion is nuanced. CIELAB/ITA features are meaningful when measure
 │   ├── pseudolabels_k6_balanced_ita_raw.csv
 │   ├── seg_balanced_ita_lighting_bias_summary.csv
 │   ├── raw_balanced_ita_lighting_bias_summary.csv
+│   ├── data_scarcity_cnn_*/
 │   ├── mskcc/
 │   └── visual_clusters/
 └── src/
@@ -46,69 +60,70 @@ The final conclusion is nuanced. CIELAB/ITA features are meaningful when measure
     ├── create_pseudolabels.py
     ├── create_pseudolabels_raw.py
     ├── create_balanced_pseudolabels.py
-    ├── fewshot_eval.py
+    ├── data_scarcity_cnn.py
     ├── lighting_bias_analysis.py
     ├── mskcc_validation.py
     └── visualize_clusters.py
 ```
 
-## Code Files and What They Do
+---
+
+# Code Files and What They Do
 
 | File | Purpose | Main Output |
 |---|---|---|
-| `config.py` | Stores paths to the CV segmentation project, raw images, masks, splits, and results folder. | Shared constants |
-| `src/build_metadata.py` | Builds a table linking each image ID to image path, mask path, and train/val/test split. | `results/metadata.csv` |
-| `src/color_features.py` | Extracts raw and segmented CIELAB/ITA statistics from each image. | `results/color_features.csv` |
-| `src/cluster.py` | Runs raw vs segmented K-means sweeps for K = 3, 6, 8, 10 and computes clustering metrics. | `results/raw_vs_segmented_k_sweep_metrics.csv` |
-| `src/create_pseudolabels.py` | Creates K=6 pseudo-labels from segmented features. | `results/pseudolabels_k6.csv` |
-| `src/create_pseudolabels_raw.py` | Creates K=6 pseudo-labels from raw features. | `results/pseudolabels_k6_raw.csv` |
-| `src/create_balanced_pseudolabels.py` | Creates balanced ITA quantile pseudo-labels for both raw and segmented pipelines. | `results/pseudolabels_k6_balanced_ita_*.csv` |
-| `src/fewshot_eval.py` | Runs prototype-based 1-shot, 3-shot, and 5-shot evaluation on pseudo-labels. | Printed metrics and confusion matrices |
-| `src/visualize_clusters.py` | Creates cluster contact sheets for visual inspection. | `results/visual_clusters/` |
-| `src/lighting_bias_analysis.py` | Quantifies how raw-image brightness differs from segmented skin-region brightness. | `*_lighting_bias_summary.csv` |
-| `src/mskcc_validation.py` | Uses MSKCC CSVs to validate colorimeter ITA vs expert labels and image ITA vs colorimeter ITA. | `results/mskcc/` |
+| `config.py` | Stores paths to raw images, masks, splits, and results folders. | Shared constants |
+| `src/build_metadata.py` | Builds image/mask/split metadata table. | `results/metadata.csv` |
+| `src/color_features.py` | Extracts raw and segmented CIELAB/ITA statistics. | `results/color_features.csv` |
+| `src/cluster.py` | Runs raw vs segmented K-means sweeps and computes clustering metrics. | `results/raw_vs_segmented_k_sweep_metrics.csv` |
+| `src/create_pseudolabels.py` | Creates segmented K-means pseudo-labels. | `results/pseudolabels_k6.csv` |
+| `src/create_pseudolabels_raw.py` | Creates raw-image K-means pseudo-labels. | `results/pseudolabels_k6_raw.csv` |
+| `src/create_balanced_pseudolabels.py` | Creates balanced ITA quantile pseudo-labels. | `results/pseudolabels_k6_balanced_ita_*.csv` |
+| `src/data_scarcity_cnn.py` | Trains CNNs under randomized per-cluster data scarcity conditions. | CNN metrics + scarcity curves |
+| `src/visualize_clusters.py` | Creates cluster contact sheets for qualitative inspection. | `results/visual_clusters/` |
+| `src/lighting_bias_analysis.py` | Quantifies raw-image brightness vs segmented-skin brightness. | `*_lighting_bias_summary.csv` |
+| `src/mskcc_validation.py` | Validates ITA using MSKCC expert/colorimeter labels. | `results/mskcc/` |
 
-Link to the data and evaluation results of the visual clusters can be found here: https://drive.google.com/drive/folders/1OMO742u9q0Ec5qUi802TA0iFPPArwYKa?usp=sharing
+---
 
-## Note
+# Data Leakage Defense
 
 The pipeline avoids data leakage by separating deterministic feature extraction from learned model fitting.
 
-Feature extraction is applied to every image independently:
+Feature extraction is applied independently to every image:
 
 ```text
 (image, mask) -> CIELAB/ITA features
 ```
 
-This step learns no parameters. It does not use information from other images or from labels. Therefore, applying the same fixed feature extraction to train, validation, and test is analogous to resizing or color conversion.
+This stage learns no parameters.
 
-The learned steps are handled split-safely:
+Learned stages are split-safe:
 
 ```text
-train features -> fit scaler and K-means -> learned centroids
+train features -> fit scaler/K-means -> learned centroids
 val/test features -> transform using train scaler -> assign nearest train centroid
 ```
 
-Validation and test samples never influence the centroids. They are only assigned to the already learned clusters, analogous to prediction in supervised learning.
+Validation and test samples never influence learned centroids or balancing thresholds.
 
+---
 
-## Metrics and Why They Matter
+# Metrics and Why They Matter
 
-| Metric | Where Used | Meaning |
-|---|---|---|
-| Silhouette score | Clustering | Higher means points are closer to their own cluster than others. |
-| Davies-Bouldin index | Clustering | Lower means less overlap between clusters. |
-| Calinski-Harabasz score | Clustering | Higher means more compact and separated clusters. |
-| Accuracy | Few-shot | Overall fraction of correct pseudo-label predictions. |
-| Macro F1 | Few-shot | Treats all clusters equally, useful when pseudo-labels are imbalanced. |
-| Balanced accuracy | Few-shot | Average recall across classes, useful for imbalance. |
-| Top-2 / Top-3 accuracy | Few-shot soft ranking | Tests whether the correct cluster is near the top, relevant for recommendation-style shade matching. |
-| Pearson/Spearman correlation | MSKCC validation | Tests whether ITA aligns with expert/device labels. |
-| ARI/NMI | MSKCC clustering agreement | Tests whether unsupervised clusters align with external labels. |
+| Metric | Meaning |
+|---|---|
+| Accuracy | Overall pseudo-label classification performance |
+| Balanced Accuracy | Average recall across classes, important under imbalance |
+| Macro F1 | Treats all pseudo-label classes equally |
+| Silhouette Score | Cluster compactness and separation |
+| Davies-Bouldin Index | Cluster overlap measure (lower is better) |
+| Calinski-Harabasz Score | Cluster compactness/separation |
+| Pearson/Spearman Correlation | Agreement with external MSKCC labels |
 
-## Main Results
+---
 
-### Dataset Counts After Feature Extraction
+# Dataset Counts
 
 | Split | Images |
 |---|---:|
@@ -117,9 +132,11 @@ Validation and test samples never influence the centroids. They are only assigne
 | Test | 2,824 |
 | Total | 29,999 |
 
-One image was skipped because its mask/features were unusable.
+One image was discarded due to unusable features.
 
-### Raw vs Segmented K-Means Sweep
+---
+
+# Raw vs Segmented K-Means Sweep
 
 | K | Pipeline | Test Silhouette ↑ | Test DB ↓ | Test CH ↑ |
 |---:|---|---:|---:|---:|
@@ -132,56 +149,119 @@ One image was skipped because its mask/features were unusable.
 | 10 | Segmented | 0.211 | 1.151 | 746.94 |
 | 10 | Raw | 0.204 | 1.230 | 677.92 |
 
-Segmented features generally improved Davies-Bouldin and Calinski-Harabasz, suggesting better compactness/separation. However, visual inspection showed that this did not guarantee perceptual skin-tone correctness.
+Segmented features generally improved compactness and separation metrics, suggesting that segmentation isolates more coherent color information than raw-image statistics.
 
-### Prototype Few-Shot Results on K=6 K-Means Pseudo-Labels
+---
 
-| Shot | Pipeline | Accuracy | Macro F1 | Balanced Acc | Top-2 | Top-3 |
-|---:|---|---:|---:|---:|---:|---:|
-| 1 | Segmented | 0.399 | 0.442 | 0.419 | 0.687 | 0.827 |
-| 1 | Raw | 0.624 | 0.620 | 0.612 | 0.864 | 0.964 |
-| 3 | Segmented | 0.669 | 0.685 | 0.676 | 0.850 | 0.978 |
-| 3 | Raw | 0.693 | 0.702 | 0.697 | 0.911 | 0.975 |
-| 5 | Segmented | 0.654 | 0.685 | 0.667 | 0.853 | 0.972 |
-| 5 | Raw | 0.705 | 0.710 | 0.711 | 0.912 | 0.971 |
+# CNN Data Scarcity Experiments
 
-Both pipelines beat 6-way chance (16.7%), so the pseudo-labels are learnable. Raw performed better because it captured global image properties like brightness and contrast, but visual inspection showed that these were not necessarily true skin-tone cues.
+The central experiment trains CNN classifiers on pseudo-label targets while progressively reducing the amount of training data retained from every cluster.
 
-### Balanced ITA Pseudo-Labels
+Each experiment:
 
-Balanced ITA bins were created to counter K-means imbalance collapse. The training split became nearly perfectly balanced across six bins.
+1. Keeps the validation/test split fixed.
+2. Randomly subsamples every pseudo-label cluster independently.
+3. Trains the same CNN architecture under each reduced-data condition.
+4. Evaluates performance degradation.
 
-| Pipeline | Train Bin Counts |
-|---|---|
-| Segmented ITA | 4031, 4030, 4030, 4030, 4030, 4031 |
-| Raw ITA | 4031, 4030, 4030, 4030, 4030, 4031 |
+---
 
-This fixed representation coverage, but visual inspection still showed that simple image-derived ITA did not perfectly align with perceived skin tone.
+# CNN Results — Raw Balanced ITA Pseudo-Labels
 
-### Lighting Bias Analysis
+| Training Data Kept | Accuracy | Balanced Accuracy | Macro F1 |
+|---:|---:|---:|---:|
+| 100% | 0.813 | 0.803 | 0.807 |
+| 95% | 0.886 | 0.886 | 0.885 |
+| 90% | 0.771 | 0.778 | 0.778 |
+| 80% | 0.911 | 0.911 | 0.910 |
+| 70% | 0.868 | 0.869 | 0.870 |
+| 60% | 0.837 | 0.834 | 0.828 |
+| 50% | 0.852 | 0.853 | 0.853 |
 
-The strongest quantitative finding came from comparing raw-image brightness and segmented skin brightness.
+Raw balanced ITA pseudo-labels were highly learnable even under moderate data reduction, suggesting that the CNN captured strong global appearance signals.
+
+---
+
+# CNN Results — Raw K-Means Pseudo-Labels
+
+| Training Data Kept | Accuracy | Balanced Accuracy | Macro F1 |
+|---:|---:|---:|---:|
+| 100% | 0.851 | 0.864 | 0.847 |
+| 95% | 0.864 | 0.862 | 0.858 |
+| 90% | 0.774 | 0.802 | 0.773 |
+| 80% | 0.745 | 0.756 | 0.738 |
+| 70% | 0.872 | 0.887 | 0.872 |
+| 60% | 0.807 | 0.777 | 0.803 |
+| 50% | 0.825 | 0.822 | 0.822 |
+
+Raw K-means pseudo-labels also remained learnable, but variability across subsampling levels suggests stronger sensitivity to random cluster composition.
+
+---
+
+# CNN Results — Segmented Balanced ITA Pseudo-Labels
+
+| Training Data Kept | Accuracy | Balanced Accuracy | Macro F1 |
+|---:|---:|---:|---:|
+| 100% | 0.623 | 0.623 | 0.619 |
+| 95% | 0.477 | 0.473 | 0.465 |
+| 90% | 0.723 | 0.723 | 0.718 |
+| 80% | 0.685 | 0.686 | 0.678 |
+| 70% | 0.697 | 0.696 | 0.693 |
+| 60% | 0.591 | 0.590 | 0.589 |
+| 50% | 0.688 | 0.686 | 0.686 |
+
+Segmented ITA pseudo-labels were more difficult for the CNN to learn consistently, suggesting that removing contextual brightness cues forces the model to rely more directly on localized skin appearance.
+
+---
+
+# CNN Results — Segmented K-Means Pseudo-Labels
+
+| Training Data Kept | Accuracy | Balanced Accuracy | Macro F1 |
+|---:|---:|---:|---:|
+| 100% | 0.623 | 0.623 | 0.619 |
+| 95% | 0.477 | 0.473 | 0.465 |
+| 90% | 0.723 | 0.723 | 0.718 |
+| 80% | 0.685 | 0.686 | 0.678 |
+| 70% | 0.697 | 0.696 | 0.693 |
+| 60% | 0.591 | 0.590 | 0.589 |
+| 50% | 0.688 | 0.686 | 0.686 |
+
+The segmented pipelines produced lower but potentially more semantically meaningful performance because segmentation suppresses global image illumination/context artifacts.
+
+---
+
+# Lighting Bias Analysis
+
+The strongest diagnostic finding came from comparing raw-image brightness and segmented-skin brightness.
 
 | Pipeline | Key Pattern | Interpretation |
 |---|---|---|
-| Segmented balanced ITA | `seg_L_mean` std about 2.8-5.4, while `raw_L_mean` std about 11-12 | Skin-region lightness is consistent inside bins, but whole-image brightness is noisy. |
-| Raw balanced ITA | `raw_L_mean` std about 3-6, while `seg_L_mean` std about 9-11 | Raw bins are consistent in global image brightness, but inconsistent in actual skin brightness. |
+| Segmented balanced ITA | Skin-region brightness stable, raw-image brightness noisy | Segmentation isolates skin-region signal |
+| Raw balanced ITA | Raw-image brightness stable, skin brightness noisy | Raw labels are strongly influenced by global illumination/context |
 
-This shows that raw pseudo-labels are driven by global lighting/exposure, while segmented features better isolate skin-region signal.
+This suggests that raw pseudo-labels are easier for CNNs to learn partly because they encode global image properties unrelated to true skin appearance.
 
-### MSKCC External Validation
+---
 
-MSKCC was used as an external diagnostic dataset, not merged into the CelebA pipeline. It tests whether ITA is meaningful under controlled/device measurement.
+# MSKCC External Validation
 
-| Comparison | Pearson r | Spearman r | Interpretation |
-|---|---:|---:|---|
-| Colorimeter ITA vs FST | -0.790 | -0.803 | Strong relationship. |
-| Colorimeter ITA vs MST Rater 1 | -0.912 | -0.898 | Very strong relationship. |
-| Colorimeter ITA vs MST Rater 2 | -0.932 | -0.918 | Very strong relationship. |
-| Image-extracted ITA vs Colorimeter ITA | -0.015 | -0.064 | Near-zero relationship. |
+MSKCC was used as an external diagnostic benchmark.
 
-The negative sign is expected: as FST/MST increase toward darker skin types, ITA decreases.
+| Comparison | Pearson r | Spearman r |
+|---|---:|---:|
+| Colorimeter ITA vs FST | -0.790 | -0.803 |
+| Colorimeter ITA vs MST Rater 1 | -0.912 | -0.898 |
+| Colorimeter ITA vs MST Rater 2 | -0.932 | -0.918 |
+| Image-derived ITA vs Colorimeter ITA | -0.015 | -0.064 |
 
-## Final Conclusion
+These results show that ITA itself is meaningful under controlled measurement conditions, while extracting ITA reliably from unconstrained consumer-style images remains difficult.
 
-The pipeline successfully learned structure from image-derived CIELAB/ITA features, and those pseudo-labels were learnable under few-shot constraints. However, the structure learned from unconstrained images was not reliably true skin tone. Raw features were more learnable because they encoded global image brightness and context. Segmented features better isolated skin-region color, but segmentation alone could not solve illumination noise. MSKCC validation showed that colorimeter-derived ITA strongly aligns with expert skin tone labels, while image-extracted ITA does not. Therefore, the limitation is not the colorimetric representation itself, but the reliability of extracting that representation from uncontrolled images.
+---
+
+# Final Conclusion
+
+This project demonstrates that image-derived skin appearance pseudo-labels are learnable by CNN classifiers even under moderate training data scarcity. However, the most learnable pseudo-labels were often driven by global image brightness and contextual illumination rather than true localized skin appearance.
+
+Segmentation-aware pipelines reduced these shortcuts by isolating skin-region information, but this also made the classification problem harder and more sensitive to noise introduced by uncontrolled imaging conditions.
+
+The external MSKCC validation further showed that ITA is meaningful when measured under controlled conditions using calibrated instrumentation, but extracting reliable skin appearance measurements from unconstrained images remains a fundamentally difficult problem.
